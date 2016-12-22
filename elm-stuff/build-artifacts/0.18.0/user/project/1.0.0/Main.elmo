@@ -59,15 +59,8 @@ var _user$project$Main$entryView = function (entry) {
 };
 var _user$project$Main$Model = F2(
 	function (a, b) {
-		return {topic: a, entries: b};
+		return {subreddit: a, entries: b};
 	});
-var _user$project$Main$init = function (topic) {
-	return {
-		ctor: '_Tuple2',
-		_0: A2(_user$project$Main$Model, topic, _elm_lang$core$Array$empty),
-		_1: _elm_lang$core$Platform_Cmd$none
-	};
-};
 var _user$project$Main$Entry = F4(
 	function (a, b, c, d) {
 		return {title: a, score: b, url: c, permalink: d};
@@ -135,6 +128,23 @@ var _user$project$Main$decodeSubReddit = A2(
 		}
 	},
 	_elm_lang$core$Json_Decode$array(_user$project$Main$decodeEntry));
+var _user$project$Main$Subreddit = function (a) {
+	return {name: a};
+};
+var _user$project$Main$init = {
+	ctor: '_Tuple2',
+	_0: A2(
+		_user$project$Main$Model,
+		_user$project$Main$Subreddit('surfing'),
+		_elm_lang$core$Array$empty),
+	_1: _elm_lang$core$Platform_Cmd$none
+};
+var _user$project$Main$updateSubRedditSelection = function (subredditName) {
+	return _user$project$Main$Subreddit(subredditName);
+};
+var _user$project$Main$UpdateSubReddit = function (a) {
+	return {ctor: 'UpdateSubReddit', _0: a};
+};
 var _user$project$Main$GetSubReddit = {ctor: 'GetSubReddit'};
 var _user$project$Main$view = function (model) {
 	return A2(
@@ -148,18 +158,37 @@ var _user$project$Main$view = function (model) {
 				{
 					ctor: '::',
 					_0: A2(
-						_elm_lang$html$Html$button,
+						_elm_lang$html$Html$input,
 						{
 							ctor: '::',
-							_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$GetSubReddit),
-							_1: {ctor: '[]'}
+							_0: _elm_lang$html$Html_Attributes$type_('text'),
+							_1: {
+								ctor: '::',
+								_0: _elm_lang$html$Html_Attributes$placeholder('Go to Subreddit'),
+								_1: {
+									ctor: '::',
+									_0: _elm_lang$html$Html_Events$onInput(_user$project$Main$UpdateSubReddit),
+									_1: {ctor: '[]'}
+								}
+							}
 						},
-						{
-							ctor: '::',
-							_0: _elm_lang$html$Html$text('Submit'),
-							_1: {ctor: '[]'}
-						}),
-					_1: {ctor: '[]'}
+						{ctor: '[]'}),
+					_1: {
+						ctor: '::',
+						_0: A2(
+							_elm_lang$html$Html$button,
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$GetSubReddit),
+								_1: {ctor: '[]'}
+							},
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html$text('Submit'),
+								_1: {ctor: '[]'}
+							}),
+						_1: {ctor: '[]'}
+					}
 				}),
 			_1: {
 				ctor: '::',
@@ -168,7 +197,7 @@ var _user$project$Main$view = function (model) {
 					{ctor: '[]'},
 					{
 						ctor: '::',
-						_0: _elm_lang$html$Html$text(model.topic),
+						_0: _elm_lang$html$Html$text(model.subreddit.name),
 						_1: {ctor: '[]'}
 					}),
 				_1: {
@@ -179,7 +208,7 @@ var _user$project$Main$view = function (model) {
 						{
 							ctor: '::',
 							_0: _elm_lang$html$Html$text(
-								A2(_elm_lang$core$Basics_ops['++'], 'https://www.reddit.com/r/', model.topic)),
+								A2(_elm_lang$core$Basics_ops['++'], 'https://www.reddit.com/r/', model.subreddit.name)),
 							_1: {ctor: '[]'}
 						}),
 					_1: {
@@ -198,48 +227,54 @@ var _user$project$Main$view = function (model) {
 var _user$project$Main$NewSubReddit = function (a) {
 	return {ctor: 'NewSubReddit', _0: a};
 };
-var _user$project$Main$getSubRedditInfo = function (topic) {
+var _user$project$Main$getSubRedditInfo = function (subredditName) {
 	var url = A2(
 		_elm_lang$core$Basics_ops['++'],
 		'https://www.reddit.com/r/',
-		A2(_elm_lang$core$Basics_ops['++'], topic, '/.json'));
+		A2(_elm_lang$core$Basics_ops['++'], subredditName, '/.json'));
 	var request = A2(_elm_lang$http$Http$get, url, _user$project$Main$decodeSubReddit);
 	return A2(_elm_lang$http$Http$send, _user$project$Main$NewSubReddit, request);
 };
 var _user$project$Main$update = F2(
 	function (msg, model) {
 		var _p0 = msg;
-		if (_p0.ctor === 'NewSubReddit') {
-			if (_p0._0.ctor === 'Ok') {
+		switch (_p0.ctor) {
+			case 'UpdateSubReddit':
 				return {
 					ctor: '_Tuple2',
 					_0: _elm_lang$core$Native_Utils.update(
 						model,
-						{entries: _p0._0._0}),
+						{
+							subreddit: _user$project$Main$updateSubRedditSelection(_p0._0)
+						}),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
-			} else {
+			case 'NewSubReddit':
+				if (_p0._0.ctor === 'Ok') {
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{entries: _p0._0._0}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				} else {
+					return {
+						ctor: '_Tuple2',
+						_0: A2(
+							_elm_lang$core$Debug$log,
+							_elm_lang$core$Basics$toString(_p0._0._0),
+							model),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				}
+			default:
 				return {
 					ctor: '_Tuple2',
-					_0: A2(
-						_elm_lang$core$Debug$log,
-						_elm_lang$core$Basics$toString(_p0._0._0),
-						model),
-					_1: _elm_lang$core$Platform_Cmd$none
+					_0: model,
+					_1: _user$project$Main$getSubRedditInfo(model.subreddit.name)
 				};
-			}
-		} else {
-			return {
-				ctor: '_Tuple2',
-				_0: model,
-				_1: _user$project$Main$getSubRedditInfo(model.topic)
-			};
 		}
 	});
 var _user$project$Main$main = _elm_lang$html$Html$program(
-	{
-		init: _user$project$Main$init('surfing'),
-		view: _user$project$Main$view,
-		update: _user$project$Main$update,
-		subscriptions: _user$project$Main$subscriptions
-	})();
+	{init: _user$project$Main$init, view: _user$project$Main$view, update: _user$project$Main$update, subscriptions: _user$project$Main$subscriptions})();

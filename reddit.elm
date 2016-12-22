@@ -9,7 +9,7 @@ import Array exposing (Array)
 
 main =
   Html.program
-    { init = init "surfing"
+    { init = init
     , view = view
     , update = update
     , subscriptions = subscriptions
@@ -18,22 +18,25 @@ main =
 -- MODEL
 
 type alias Model =
-  { topic : String,
+  { subreddit : Subreddit,
     entries : Array Entry
   }
 
-init : String -> (Model, Cmd Msg)
-init topic =
-  (Model topic Array.empty, Cmd.none)
+init :(Model, Cmd Msg)
+init =
+  (Model (Subreddit "surfing") Array.empty, Cmd.none)
 
 
 type Msg =
   NewSubReddit (Result Http.Error (Array Entry))
   | GetSubReddit
+  | UpdateSubReddit String
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
+    UpdateSubReddit  name ->
+      ({model | subreddit = (updateSubRedditSelection name)}, Cmd.none)
     NewSubReddit (Ok json) ->
       ( { model | entries = json  }, Cmd.none)
 
@@ -41,7 +44,7 @@ update msg model =
       (Debug.log (toString e) model, Cmd.none)
 
     GetSubReddit ->
-      (model, getSubRedditInfo model.topic)
+      (model, getSubRedditInfo model.subreddit.name)
 
 
 -- VIEW
@@ -50,11 +53,11 @@ view : Model -> Html Msg
 view model =
   div [][
     div [][
-      -- input [placeholder "Go to Subreddit", onClick GetSubReddit] []
-      button [onClick GetSubReddit] [text "Submit"]
+      input [ type_ "text", placeholder "Go to Subreddit", onInput UpdateSubReddit] []
+      , button [onClick GetSubReddit] [text "Submit"]
     ]
-    ,h2 [] [text model.topic]
-    ,  h2 [] [text <| "https://www.reddit.com/r/" ++ model.topic]
+    ,h2 [] [text model.subreddit.name]
+    ,  h2 [] [text <| "https://www.reddit.com/r/" ++ model.subreddit.name]
     ,div [] <| Array.toList <| Array.map entryView model.entries
 
   ]
@@ -68,27 +71,26 @@ entryView entry =
       a [href <| "https://www.reddit.com"++entry.permalink ] [ text "comments"]
     ]
   ]
-  -- div []
-  --   [ h2 [] [text model.topic]
-  --   , img [src model.gifUrl] []
-  --   , div []
-  --     [ button [ onClick MorePlease ] [ text "More Please!" ] ]
-  --   ]
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.none
 
 getSubRedditInfo : String -> Cmd Msg
-getSubRedditInfo topic =
+getSubRedditInfo subredditName =
   let
-    url = "https://www.reddit.com/r/" ++ topic ++ "/.json"
+    url = "https://www.reddit.com/r/" ++ subredditName ++ "/.json"
 
     request =
       Http.get url decodeSubReddit
 
   in
     Http.send NewSubReddit request
+
+updateSubRedditSelection: String -> Subreddit
+updateSubRedditSelection subredditName =
+  Subreddit subredditName
+
 
 decodeSubReddit : Json.Decoder (Array Entry)
 decodeSubReddit =
@@ -107,4 +109,8 @@ type alias Entry =
     score : Int,
     url : String,
     permalink : String
+  }
+
+type alias Subreddit =
+  { name : String
   }
