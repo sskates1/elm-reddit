@@ -5,7 +5,7 @@ import Http
 import Json.Decode as Json
 import List.Extra
 
-
+main : Program Never Model Msg
 main =
   Html.program
     { init = init
