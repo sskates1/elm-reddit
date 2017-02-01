@@ -3,8 +3,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as Json
-import Array exposing (Array)
-
+import List.Extra
 
 
 main =
@@ -19,18 +18,19 @@ main =
 
 type alias Model =
   { subreddit : Subreddit,
-    entries : Array Entry
+    entries : List Entry
   }
 
 init :(Model, Cmd Msg)
 init =
-  (Model (Subreddit "surfing") Array.empty, Cmd.none)
+  (Model (Subreddit "surfing") [], Cmd.none)
 
 
 type Msg =
-  NewSubReddit (Result Http.Error (Array Entry))
+  NewSubReddit (Result Http.Error (List Entry))
   | GetSubReddit
   | UpdateSubReddit String
+  | Vote VoteStatus Entry
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -46,6 +46,19 @@ update msg model =
     GetSubReddit ->
       (model, getSubRedditInfo model.subreddit.name)
 
+    Vote vote entry ->
+      (model, Cmd.none)
+
+type VoteStatus =
+  UpVote
+  | DownVote
+  | NullVote
+
+vote : VoteStatus -> Entry -> Model -> Model
+vote vote entry model =
+  let entries = List.Extra.updateIf (\x -> entry.id == x.id) (sendVote vote) model.entries
+  in {model | entries = entries }
+
 
 -- VIEW
 
@@ -58,14 +71,16 @@ view model =
     ]
     ,h2 [] [text model.subreddit.name]
     ,  h2 [] [text <| "https://www.reddit.com/r/" ++ model.subreddit.name]
-    ,div [] <| Array.toList <| Array.map entryView model.entries
+    ,div [] <| List.map entryView model.entries
 
   ]
 
 entryView : Entry -> Html Msg
 entryView entry =
   div [] [
-    div [] [ text <| toString entry.score]
+    div [] [ button [onClick <| Vote UpVote entry] [text "upvote"]
+      , button [onClick <| Vote DownVote entry] [text "downvote"]]
+    , div [] [ text <| toString entry.score]
     ,a [href entry.url] [ text entry.title]
     , div [] [
       a [href <| "https://www.reddit.com"++entry.permalink ] [ text "comments"]
@@ -92,23 +107,36 @@ updateSubRedditSelection subredditName =
   Subreddit subredditName
 
 
-decodeSubReddit : Json.Decoder (Array Entry)
+decodeSubReddit : Json.Decoder (List Entry)
 decodeSubReddit =
-  Json.at ["data", "children" ] (Json.array decodeEntry)
+  Json.at ["data", "children" ] (Json.list decodeEntry)
 
 decodeEntry : Json.Decoder Entry
 decodeEntry =
-  Json.map4 Entry
+  Json.map6 Entry
     (Json.at ["data","title"] Json.string)
     (Json.at ["data","score"] Json.int )
     (Json.at ["data","url"] Json.string )
-    (Json.at ["data","permalink"] Json.string )
+    (Json.at ["data","permalink"] Json.string)
+    (Json.succeed NullVote)
+    (Json.at ["data", "id"] Json.string)
+
+sendVote : VoteStatus -> Entry -> Entry
+sendVote vote entry =
+  if vote == entry.voteStatus then
+    { entry | voteStatus = NullVote }
+  else
+    {entry | voteStatus = vote}
+
+
 
 type alias Entry =
   { title : String,
     score : Int,
     url : String,
-    permalink : String
+    permalink : String,
+    voteStatus : VoteStatus,
+    id : String
   }
 
 type alias Subreddit =
